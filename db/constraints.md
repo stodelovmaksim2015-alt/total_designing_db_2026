@@ -36,7 +36,7 @@
 | Тип | Значения | BR |
 |---|---|---|
 | restaurant_status | 'активен', 'неактивен' | BR-4.3 |
-| ава | ва | ва |
+| product_status | 'доступно', 'нет_в_наличии', 'архив' | BR-5.5 |
 
 ---
 
@@ -97,7 +97,8 @@
 |---|---|---|---|---|
 | restaurant | rating | rating BETWEEN 0 AND 5 | BR-4.2 | Рейтинг ресторана должен находиться в диапазоне от 0 до 5 |
 | restaurant | work_end | work_end > work_start | BR-4.4 | Время закрытия должно быть позже времени открытия |
-|---|---|---|---|---|
+| product | price | price >= 0 | BR-5.3 | Цена не может быть отрицательной |
+| product | rating | rating BETWEEN 0 AND 5 | BR-5.4 | Рейтинг должен находиться в диапазоне от 0 до 5 |
 
 ---
 
@@ -121,7 +122,8 @@
 | client_address | client_id | client(client_id) | BR-2.4 | Адрес должен быть связан с существующим клиентом |
 | client_address | address_id | address(address_id) | BR-3.4 | Адрес клиента должен существовать в справочнике адресов |
 | restaurant | address_id | address(address_id) | BR-3.3 | Каждый ресторан должен иметь один существующий адрес |
-
+| product | restaurant_id | restaurant(restaurant_id) | BR-5.1 | Каждое блюдо принадлежит существующему ресторану |
+| product | product_category_id | product_category(product_category_id) | BR-5.1 | Каждое блюдо принадлежит существующей категории |
 
 
 Если FK составной — выпиши все столбцы.
@@ -150,7 +152,8 @@
 |---|---|---|---|
 | address | apartment_office | BR-3.2 | Квартира или офис могут отсутствовать, например для частного дома |
 | restaurant | rating | BR-9.7 | Рейтинг равен NULL, если у ресторана нет отзывов |
-
+| product | photo_url | BR-5.6 | Фотография блюда необязательна |
+| product | rating | BR-9.7 | Если у блюда нет отзывов, тогда NULL |
 
 ---
 
@@ -160,7 +163,8 @@
 |---|---|---|---|
 | client | client_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 идентификатор клиента генерируется на сервере как UUID |
 | restaurant | restaurant_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: идентификатор ресторана генерируется на сервере |
-
+| product_category | product_category_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID категории генерируется на сервере |
+| product | product_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID блюда генерируется на сервере |
 
 Если `commission` и/или `total_amount` — `GENERATED ALWAYS AS` — обоснуй здесь. Если обычные поля с `CHECK` — тоже обоснуй выбор.
 
