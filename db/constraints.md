@@ -37,6 +37,7 @@
 |---|---|---|
 | restaurant_status | 'активен', 'неактивен' | BR-4.3 |
 | product_status | 'доступно', 'нет_в_наличии', 'архив' | BR-5.5 |
+| courier_status | 'свободен', 'занят', 'на_доставке', 'уволен' | BR-6.2 |
 
 ---
 
@@ -99,6 +100,11 @@
 | restaurant | work_end | work_end > work_start | BR-4.4 | Время закрытия должно быть позже времени открытия |
 | product | price | price >= 0 | BR-5.3 | Цена не может быть отрицательной |
 | product | rating | rating BETWEEN 0 AND 5 | BR-5.4 | Рейтинг должен находиться в диапазоне от 0 до 5 |
+| courier | coefficient | coefficient BETWEEN 0.1 AND 0.5 | BR-6.4 | Коэффициент должен находиться в диапазоне от 0.1 до 0.5 |
+| courier_pay | month | month BETWEEN 1 AND 12 | BR-10.2 | Номер календарного месяца должен находиться в диапазоне от 1 до 12 |
+| courier_pay | amount | amount >= 0 | BR-10.4 | Зарплата курьера не может быть отрицательной |
+| courier_pay | coefficient_used | coefficient_used BETWEEN 0.1 AND 0.5 | BR-6.4, BR-10.2 | Используется коэффициент в допустимом диапазоне |
+
 
 ---
 
@@ -124,7 +130,7 @@
 | restaurant | address_id | address(address_id) | BR-3.3 | Каждый ресторан должен иметь один существующий адрес |
 | product | restaurant_id | restaurant(restaurant_id) | BR-5.1 | Каждое блюдо принадлежит существующему ресторану |
 | product | product_category_id | product_category(product_category_id) | BR-5.1 | Каждое блюдо принадлежит существующей категории |
-
+| courier_pay | courier_id | courier(courier_id) | BR-10.2 | Каждая выплата должна относиться к курьеру |
 
 Если FK составной — выпиши все столбцы.
 
@@ -154,6 +160,7 @@
 | restaurant | rating | BR-9.7 | Рейтинг равен NULL, если у ресторана нет отзывов |
 | product | photo_url | BR-5.6 | Фотография блюда необязательна |
 | product | rating | BR-9.7 | Если у блюда нет отзывов, тогда NULL |
+| courier | dismissal_date | BR-6.3 | У работающего курьера даты увольнения может не быть |
 
 ---
 
@@ -165,6 +172,8 @@
 | restaurant | restaurant_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: идентификатор ресторана генерируется на сервере |
 | product_category | product_category_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID категории генерируется на сервере |
 | product | product_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID блюда генерируется на сервере |
+| courier | courier_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: UUID курьера генерируется на сервере |
+| courier | coefficient | DEFAULT 0.1 | BR-6.5 начальный коэффициент нового курьера равен 0.1 |
 
 Если `commission` и/или `total_amount` — `GENERATED ALWAYS AS` — обоснуй здесь. Если обычные поля с `CHECK` — тоже обоснуй выбор.
 
