@@ -175,6 +175,7 @@
 | product | product_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID блюда генерируется на сервере |
 | courier | courier_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: UUID курьера генерируется на сервере |
 | courier | coefficient | DEFAULT 0.1 | BR-6.5 начальный коэффициент нового курьера равен 0.1 |
+| product | rating | DEFAULT NULL | По уточнению преподавателя рейтинг по умолчанию NULL, но при создании допускается передать значение от 0 до 5 |
 
 Если `commission` и/или `total_amount` — `GENERATED ALWAYS AS` — обоснуй здесь. Если обычные поля с `CHECK` — тоже обоснуй выбор.
 
