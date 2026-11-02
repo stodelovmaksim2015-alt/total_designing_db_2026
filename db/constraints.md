@@ -38,6 +38,8 @@
 | restaurant_status | 'активен', 'неактивен' | BR-4.3 |
 | product_status | 'доступно', 'нет_в_наличии', 'архив' | BR-5.5 |
 | courier_status | 'свободен', 'занят', 'на_доставке', 'уволен' | BR-6.2 |
+| order_status | 'создан', 'готовится', 'в_доставке', 'доставлен', 'отменён' | BR-7.7 |
+| order_pay_status | 'ожидает', 'оплачен', 'ошибка' | BR-7.9 |
 
 ---
 
@@ -64,10 +66,9 @@
 **Как обеспечено, что адрес доставки принадлежит клиенту:**
 
 ```
-[что сделал: составной FK / триггер / на уровне приложения.
-Если составной FK — напиши, как выглядит.
-Если триггер — опиши логику.
-Если на уровне приложения — обоснуй, почему в БД не нужно.]
+Для реализации BR-7.4 используется составной внешний ключ (client_id, address_id) таблицы order
+на составной первичный ключ таблицы client_address. Это дает то,
+что клиент не сможет оформить заказ на адрес, который ему не принадлежит
 ```
 
 ### Ловушка 3: `order_structure` — один ресторан в заказе (BR-7.3)
@@ -75,7 +76,9 @@
 **Как обеспечено, что все блюда из `order.restaurant_id`:**
 
 ```
-[что сделал + почему]
+Для реализации BR-7.3 выбран механизм проверки принадлежности блюда ресторану через триггер.
+При добавлении или изменении позиции заказа идеь проверка на совпадение product.restaurant_id и order.restaurant_id.
+Также необходимо контролировать изменения restaurant_id у существующих заказов и блюд
 ```
 
 ### Ловушка 4: `review` — полиморфизм (BR-9.1)
@@ -105,7 +108,11 @@
 | courier_pay | amount | amount >= 0 | BR-10.4 | Зарплата курьера не может быть отрицательной |
 | courier_pay | coefficient_used | coefficient_used BETWEEN 0.1 AND 0.5 | BR-6.4, BR-10.2 | Используется коэффициент в допустимом диапазоне |
 | courier | dismissal_date, hire_date | dismissal_date IS NULL OR dismissal_date >= hire_date | BR-6.3 |  БП - нельзя увольнять задним числом |
-
+| courier | dismissal_date | status <> 'уволен' OR dismissal_date IS NOT NULL | BR-6.3 | Уволенный курьер обязан иметь дату увольнения |
+| order | total_amount | total_amount >= 1000 | BR-7.11 | Общая сумма заказа должна быть не менее 1000 рублей |
+| order | delivery_timestamp | delivery_timestamp IS NULL OR delivery_timestamp >= order_timestamp | BR-7.13 | Дата доставки не может быть раньше даты заказа |
+| order_structure | quantity | quantity > 0 | BR-7.15 | Количество блюда должно быть положительным |
+| order | delivery_timestamp | status <> 'доставлен' OR delivery_timestamp IS NOT NULL | BR-7.12 | Если заказ имеет статус «доставлен», дата завершения доставки обязательна |
 
 ---
 
@@ -132,6 +139,13 @@
 | product | restaurant_id | restaurant(restaurant_id) | BR-5.1 | Каждое блюдо принадлежит существующему ресторану |
 | product | product_category_id | product_category(product_category_id) | BR-5.1 | Каждое блюдо принадлежит существующей категории |
 | courier_pay | courier_id | courier(courier_id) | BR-10.2 | Каждая выплата должна относиться к курьеру |
+| order | courier_id | courier(courier_id) | BR-7.5 | Доставку выполняет курьер |
+| order | client_id | client(client_id) | BR-7.1 | Заказ оформляет клиент |
+| order | address_id | address(address_id) | BR-7.4 | Адрес доставки должен существовать |
+| order | restaurant_id | restaurant(restaurant_id) | BR-7.2 | Заказ относится к одному ресторану |
+| order | client_id, address_id | client_address(client_id, address_id) | BR-7.4 | Адрес доставки должен принадлежать клиенту. Клиент не может оформить заказ не на свой адрес|
+| order_structure | order_id | order(order_id) | BR-7.14 | Позиция относится к заказу |
+| order_structure | product_id | product(product_id) | BR-7.14 | Позиция содержит блюдо |
 
 Если FK составной — выпиши все столбцы.
 
@@ -162,6 +176,7 @@
 | product | photo_url | BR-5.6 | Фотография блюда необязательна |
 | product | rating | BR-9.7 | Если у блюда нет отзывов, тогда NULL |
 | courier | dismissal_date | BR-6.3 | У работающего курьера даты увольнения может не быть |
+| order | delivery_timestamp | BR-7.12 | До завершения доставки дата окончания может отсутствовать |
 
 ---
 
@@ -170,12 +185,17 @@
 | Таблица | Столбец | Что | Обоснование |
 |---|---|---|---|
 | client | client_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 идентификатор клиента генерируется на сервере как UUID |
+| address | address_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID адреса генерируется на сервере |
 | restaurant | restaurant_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: идентификатор ресторана генерируется на сервере |
 | product_category | product_category_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID категории генерируется на сервере |
 | product | product_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID блюда генерируется на сервере |
 | courier | courier_id | DEFAULT exts.uuid_generate_v4() | BR-11.1: UUID курьера генерируется на сервере |
 | courier | coefficient | DEFAULT 0.1 | BR-6.5 начальный коэффициент нового курьера равен 0.1 |
 | product | rating | DEFAULT NULL | По уточнению преподавателя рейтинг по умолчанию NULL, но при создании допускается передать значение от 0 до 5 |
+| order | order_id | DEFAULT exts.uuid_generate_v4() | BR-11.1 UUID заказа генерируется на сервере |
+| order | commission | GENERATED ALWAYS AS (round(order_amount * 0.10, 2)) STORED | BR-1.4, BR-7.10 комиссия автоматически составляет 10 процентов от суммы блюд |
+| order | total_amount | GENERATED ALWAYS AS (order_amount + round(order_amount * 0.10, 2)) STORED | BR-7.10: итоговая сумма автоматически включает стоимость блюд и комиссию |
+| order | order_timestamp | DEFAULT LOCALTIMESTAMP | BR-7.1, BP-11.2 |  Установка серверного времени создания заказа, при условии, что значение не передано |
 
 Если `commission` и/или `total_amount` — `GENERATED ALWAYS AS` — обоснуй здесь. Если обычные поля с `CHECK` — тоже обоснуй выбор.
 
