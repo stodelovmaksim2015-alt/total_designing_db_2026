@@ -104,6 +104,7 @@
 | courier_pay | month | month BETWEEN 1 AND 12 | BR-10.2 | Номер календарного месяца должен находиться в диапазоне от 1 до 12 |
 | courier_pay | amount | amount >= 0 | BR-10.4 | Зарплата курьера не может быть отрицательной |
 | courier_pay | coefficient_used | coefficient_used BETWEEN 0.1 AND 0.5 | BR-6.4, BR-10.2 | Используется коэффициент в допустимом диапазоне |
+| courier | dismissal_date, hire_date | dismissal_date IS NULL OR dismissal_date >= hire_date | BR-6.3 |  БП - нельзя увольнять задним числом |
 
 
 ---
