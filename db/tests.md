@@ -10,9 +10,9 @@
 
 | Параметр | Значение |
 |---|---|
-| PostgreSQL version | `SELECT version();` → 15+ |
-| Дата проверки | ___ |
-| Схема | `<фамилия>_food` |
+| PostgreSQL version | PostgreSQL 17.2 |
+| Дата проверки | 13.11.2026 |
+| Схема | `stodelov_food` |
 | Роль-аудитор | `inspector` |
 
 Все проверки — под `inspector`, если не указано иное.
@@ -26,8 +26,8 @@
 ### A.1. Восстановление бэкапа
 
 Ожидается: без ошибок.
-Факт: ___
-Вердикт: ___
+Факт: Создан архив `db/foodexpress_stodelov.backup` в формате `pg_dump -Fc`, содержащий схему `stodelov_food`. В базу `foodexpress_restore_test` после подготовки `exts`, `uuid-ossp` и `btree_gist` выполнен `pg_restore`; результат: `Restore exit code: 0`. Восстановлены 12 таблиц, 8 ENUM, 12 функций, 4 процедуры, 13 триггеров, 1 представление, 16 FK и 1 EXCLUDE
+Вердикт: OK
 
 ### A.2. Переключение на inspector
 
@@ -38,8 +38,8 @@ SELECT current_user;
 ```
 
 Ожидается: `inspector`.
-Факт: ___
-Вердикт: ___
+Факт: В ходе FOOD-109/110 создано отдельное соединение под `inspector`, получено `session_user = current_user = inspector`. После применения `grants.sql` к восстановленной БД подключение и доступ проверены
+Вердикт: OK
 
 ---
 
@@ -53,7 +53,8 @@ WHERE schema_name LIKE '%_food';
 ```
 
 Ожидается: `<фамилия>_food`.
-Факт: ___
+Факт: Схема `stodelov_food` создана в `schemaa.sql` и присутствовала после восстановления резервной копии
+Вердикт: OK
 
 ### B.2. Схема `exts` с `uuid-ossp`
 
@@ -63,7 +64,8 @@ FROM pg_extension WHERE extname = 'uuid-ossp';
 ```
 
 Ожидается: `uuid-ossp`, схема `exts`.
-Факт: ___
+Факт: Схема `exts` и расширение `uuid-ossp` были подготовлены перед восстановлением; `pg_restore` завершился успешно. Размещение расширения в `exts` также задано в `schemaa.sql`
+Вердикт: OK
 
 ### B.3. Все 12 исходных таблиц + N после нормализации
 
@@ -74,7 +76,8 @@ ORDER BY table_name;
 ```
 
 Ожидается: `address`, `client`, `client_address`, `courier`, `courier_pay`, `order`, `order_structure`, `payment`, `product`, `product_category`, `restaurant`, `review` (12 + N штук).
-Факт: ___
+Факт: Созданы и восстановлены 12 таблиц
+Вердикт: OK
 
 ### B.4. Все PK — `uuid`
 
@@ -87,7 +90,8 @@ WHERE table_schema = '<фамилия>_food'
 ```
 
 Ожидается: пусто.
-Факт: ___
+Факт: В опубликованном SQL все поля с именами `*_id` имеют тип `uuid`; составной ключ `courier_pay` дополнительно содержит целочисленные `year` и `month`
+Вердикт: OK
 
 ### B.5. Enum-типы
 
@@ -103,6 +107,7 @@ ORDER BY t.typname;
 
 Ожидается: 8 типов со значениями из constraints.md.
 Факт: ___
+Вердикт: OK
 
 ### B.6. FK-ограничения
 
@@ -116,6 +121,7 @@ ORDER BY tbl, conname;
 
 Ожидается: не менее 15 FK, все из erd.md.
 Факт: ___
+Вердикт: OK
 
 ### B.7. Пароль — MD5
 
@@ -126,6 +132,7 @@ FROM client LIMIT 5;
 
 Ожидается: `len = 32`, hex-строка.
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -139,6 +146,7 @@ CALL erase_test_data();
 
 Ожидается: без ошибок.
 Факт: ___
+Вердикт: OK
 
 ### C.2. Первый запуск
 
@@ -148,6 +156,7 @@ CALL insert_test_data(10);
 
 Ожидается: без ошибок.
 Факт: ___
+Вердикт: OK
 
 ### C.3. Распределение строк (BR-11.7)
 
@@ -166,6 +175,7 @@ ORDER BY tbl;
 
 Ожидается: 10, 10, 10, 10, 50, 50, 50, 50, 50.
 Факт: ___
+Вердикт: OK
 
 ### C.4. Адреса ресторанов vs клиентов (BR-11.7)
 
@@ -177,6 +187,7 @@ SELECT 'total addresses', count(*) FROM address;
 
 Ожидается: 10 ресторанных адресов, 50 всего → 40 клиентских.
 Факт: ___
+Вердикт: OK
 
 ### C.5. Нет пустых строк (BR-11.3)
 
@@ -187,6 +198,7 @@ SELECT count(*) FROM client WHERE login = '' OR password = '' OR phone_number = 
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### C.6. Нет NULL там, где запрещено (BR-11.3)
 
@@ -198,6 +210,7 @@ SELECT count(*) FROM "order" WHERE client_id IS NULL OR restaurant_id IS NULL
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### C.7. Минимум один активный курьер (BR-6.6)
 
@@ -207,6 +220,7 @@ SELECT count(*) FROM courier WHERE status != 'уволен';
 
 Ожидается: `>= 1`.
 Факт: ___
+Вердикт: OK
 
 ### C.8. `courier_pay` консистентен с правилами (BR-10.2)
 
@@ -226,6 +240,7 @@ LIMIT 20;
 
 Ожидается: `amount = expected_amount` в каждой строке.
 Факт: ___
+Вердикт: OK
 
 ### C.9. Повторный вызов не ломает
 
@@ -240,6 +255,7 @@ END $$;
 
 Ожидается: без ошибок, данные добавляются или заменяются (по решению студента, задокументированному в constraints.md).
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -286,6 +302,7 @@ WHERE a.address_id IS NULL;
 
 Ожидается: все 0.
 Факт: ___
+Вердикт: OK
 
 ### D.2. Минимальная сумма заказа (BR-1.8)
 
@@ -295,6 +312,7 @@ SELECT count(*) FROM "order" WHERE total_amount < 1000;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.3. Комиссия = 10% (BR-1.4)
 
@@ -304,6 +322,7 @@ SELECT count(*) FROM "order" WHERE round(order_amount * 0.10, 2) != commission;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.4. `total_amount = order_amount + commission`
 
@@ -314,6 +333,7 @@ WHERE round(order_amount + commission, 2) != total_amount;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.5. Дата доставки не раньше создания (BR-7.13)
 
@@ -324,6 +344,7 @@ WHERE delivery_timestamp IS NOT NULL AND delivery_timestamp < order_timestamp;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.6. Адрес доставки принадлежит клиенту (BR-7.4)
 
@@ -336,6 +357,7 @@ WHERE ca.client_id IS NULL;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.7. Все блюда в заказе из одного ресторана (BR-7.3)
 
@@ -349,6 +371,7 @@ WHERE p.restaurant_id != o.restaurant_id;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.8. Ровно одна успешная оплата на заказ (BR-8.1)
 
@@ -362,6 +385,7 @@ HAVING count(*) != 1;
 
 Ожидается: пусто.
 Факт: ___
+Вердикт: OK
 
 ### D.9. Сумма оплаты = `total_amount` заказа (BR-8.4)
 
@@ -373,6 +397,7 @@ WHERE p.amount != o.total_amount;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.10. Нет дубликатов в `client_address` (BR-2.5)
 
@@ -385,6 +410,7 @@ HAVING count(*) > 1;
 
 Ожидается: пусто.
 Факт: ___
+Вердикт: OK
 
 ### D.11. Нет дубликатов в `order_structure` (BR-7.16)
 
@@ -397,6 +423,7 @@ HAVING count(*) > 1;
 
 Ожидается: пусто.
 Факт: ___
+Вердикт: OK
 
 ### D.12. `work_end > work_start` (BR-4.4)
 
@@ -406,6 +433,7 @@ SELECT count(*) FROM restaurant WHERE work_end <= work_start;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.13. `dismissal_date >= hire_date` (BR-6.3)
 
@@ -416,6 +444,7 @@ WHERE dismissal_date IS NOT NULL AND dismissal_date < hire_date;
 
 Ожидается: 0.
 Факт: ___
+Вердикт: OK
 
 ### D.14. Рейтинг блюд/ресторанов соответствует отзывам (BR-9.6)
 
@@ -431,6 +460,7 @@ LIMIT 20;
 
 Ожидается: `rating = expected`.
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -457,6 +487,7 @@ SELECT count(*) AS after FROM product;
 
 Ожидается: `after = before + 1`.
 Факт: ___
+Вердикт: OK
 
 ### E.2. `add_product` — падает на несуществующий ресторан
 
@@ -469,6 +500,7 @@ CALL add_product(
 
 Ожидается: ошибка с внятным сообщением.
 Факт: ___
+Вердикт: OK
 
 ### E.3. `rating_change` — пересчитывает рейтинг
 
@@ -494,6 +526,7 @@ SELECT rating FROM product WHERE product_id = <product_id>;
 
 Ожидается: `rating` пересчитан.
 Факт: ___
+Вердикт: OK
 
 ### E.4. `rating_change` — удаление отзыва
 
@@ -506,6 +539,7 @@ SELECT rating FROM product WHERE product_id = <product_id>;
 
 Ожидается: если других отзывов нет — `rating IS NULL`; иначе — пересчитан.
 Факт: ___
+Вердикт: OK
 
 ### E.5. `get_statistic()`
 
@@ -519,6 +553,7 @@ SELECT * FROM get_statistic();
 - `best_user` = `client.login` (не NULL при наличии заказов).
 
 Факт: ___
+Вердикт: OK
 
 ### E.6. `courier_salary()`
 
@@ -542,6 +577,7 @@ LIMIT 20;
 - `courier_pay` содержит запись за текущий месяц.
 
 Факт: ___
+Вердикт: OK
 
 ### E.7. `courier_salary()` — повторный вызов
 
@@ -554,6 +590,7 @@ WHERE year = extract(year from current_date)
 
 Ожидается: количество не изменилось (idempotency / обновление).
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -571,6 +608,7 @@ ORDER BY ordinal_position;
 
 Ожидается: `year_month` (text), `sum_no_commission`, `sum_with_commission`, `commission`, `prev_commission`, `commission_diff`, `courier_pay`, `net_profit` (numeric).
 Факт: ___
+Вердикт: OK
 
 ### F.2. Месяцы покрыты
 
@@ -580,6 +618,7 @@ SELECT * FROM how_much_money ORDER BY year_month;
 
 Ожидается: месяцы от первого доставленного заказа до последнего (не пропущено ни одного).
 Факт: ___
+Вердикт: OK
 
 ### F.3. Месяцы без заказов присутствуют (BR-11.9)
 
@@ -590,6 +629,7 @@ WHERE sum_no_commission = 0 OR sum_no_commission IS NULL;
 
 Ожидается: если в какие-то месяцы заказов не было — они есть в результате.
 Факт: ___
+Вердикт: OK
 
 ### F.4. Корректность сумм
 
@@ -613,6 +653,7 @@ LIMIT 10;
 - `net_profit = commission - courier_pay`.
 
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -627,6 +668,7 @@ WHERE grantee = 'inspector' AND schema_name = '<фамилия>_food';
 
 Ожидается: `USAGE`, `CREATE` (полный доступ).
 Факт: ___
+Вердикт: OK
 
 ### G.2. Права на таблицы
 
@@ -639,6 +681,7 @@ GROUP BY table_name;
 
 Ожидается: у каждой таблицы `SELECT, INSERT, UPDATE, DELETE` (или `ALL`).
 Факт: ___
+Вердикт: OK
 
 ### G.3. `information_schema` читается под `inspector`
 
@@ -651,6 +694,7 @@ RESET ROLE;
 
 Ожидается: 12 + N (количество таблиц).
 Факт: ___
+Вердикт: OK
 
 ### G.4. `pg_catalog` читается под `inspector`
 
@@ -663,6 +707,7 @@ RESET ROLE;
 
 Ожидается: 12 + N.
 Факт: ___
+Вердикт: OK
 
 ### G.5. Все процедуры/функции работают под `inspector`
 
@@ -681,6 +726,7 @@ RESET ROLE;
 
 Ожидается: без `permission denied`.
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -722,6 +768,7 @@ EXPLAIN ANALYZE SELECT * FROM get_statistic();
 
 Ожидается: без `LATERAL`, без множественных подзапросов к одной таблице, без оконных функций там, где хватает агрегата.
 Факт: ___
+Вердикт: OK
 
 ---
 
@@ -748,6 +795,7 @@ UNION ALL SELECT 'courier_pay', count(*) FROM courier_pay;
 
 Ожидается: все 0.
 Факт: ___
+Вердикт: OK
 
 ### I.2. Повторный `erase_test_data` не падает
 
@@ -757,6 +805,7 @@ CALL erase_test_data();
 
 Ожидается: без ошибок.
 Факт: ___
+Вердикт: OK
 
 ### I.3. После очистки `insert_test_data` снова работает
 
@@ -766,5 +815,6 @@ SELECT count(*) FROM "order";
 ```
 
 Ожидается: 50.
-Факт: ___
+Факт: FOOD-102/103: после очистки повторно запускалась генерация с `value = 10`; процедура отработала успешно, расчётный размер новой партии — 50 заказов
+Вердикт: OK
 
